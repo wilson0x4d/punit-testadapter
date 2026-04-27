@@ -11,7 +11,6 @@ import * as pyast from 'py-ast'
 import * as net from 'net'
 import { randomInt } from 'node:crypto'
 
-const PYTHON_COMMENT_RE = /(?:'''(?:[^'\\]|\\.)*'''|"""(?:[^"\\]|\\.)*"""|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|(#[^\n]*)/g
 
 type ParsedTestResult = {
     status: 'pass' | 'fail'

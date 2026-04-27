@@ -556,9 +556,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         const buf = await vscode.workspace.fs.readFile(entryUri)
                         const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
                         if (isTestCandidate(content)) {
-                            const astModule: pyast.Module = pyast.parse(content, {
-                                comments: false
-                            })
+                            const astModule: pyast.Module = pyast.parse(content)
                             processAstModule(entryUri, astModule, item)
                         }
                 }

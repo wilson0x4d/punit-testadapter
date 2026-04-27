@@ -463,7 +463,7 @@ export async function activate(context: vscode.ExtensionContext) {
             item = controller.createTestItem(
                 key,
                 name,
-                uri.with({fragment: uri.fragment?.startsWith('dyndata') ? uri.fragment : ''}))
+                uri.with({fragment: ''}))
             item.canResolveChildren = (type !== 'dyndata') && (type !== 'function')
             testItems.set(key, item)
         }
@@ -508,7 +508,8 @@ export async function activate(context: vscode.ExtensionContext) {
             // this test ran "with data" so we dynamically create "data-specific" test items instead of returning the parent item
             dataparts.shift()
             const the_data:string = `(${dataparts.join(',')}`
-            const dyndata_item = getTestItem('dyndata', qnitem.uri!.with({fragment: `dyndata_${encodeURIComponent(the_data)}`}), `${qnitem.label}${the_data}}`, qnitem.range)
+            const dyndata_hash = Buffer.from(parsedTestResult.name).toString('base64')
+            const dyndata_item = getTestItem('dyndata', qnitem.uri!.with({fragment: dyndata_hash}), `${qnitem.label}${the_data}}`, qnitem.range)
             qnitem.children.add(dyndata_item)
             return dyndata_item
         } else {
@@ -529,7 +530,6 @@ export async function activate(context: vscode.ExtensionContext) {
             controller.items.add(workspaceItem)
             discovered.add(workspaceItem.id)
         })
-        pruneOrphans(controller.items, discovered)
     }
 
     async function processFolder(item: vscode.TestItem) {
@@ -547,23 +547,23 @@ export async function activate(context: vscode.ExtensionContext) {
                     continue
                 }
                 const entryUri = vscode.Uri.file(path.join(folderUri!.fsPath, entry.name))
-                    try {
-                if (entry.isDirectory()) {
-                    const child = getTestItem('folder', entryUri, entry.name)
-                    item.children.add(child)
-                    //await processFolder(child)
-                } else if (entry.isFile() && entry.name.endsWith('.py')) {
+                try {
+                    if (entry.isDirectory()) {
+                        const child = getTestItem('folder', entryUri, entry.name)
+                        item.children.add(child)
+                        await processFolder(child)
+                    } else if (entry.isFile() && entry.name.endsWith('.py')) {
                         const buf = await vscode.workspace.fs.readFile(entryUri)
                         const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
                         if (isTestCandidate(content)) {
                             const astModule: pyast.Module = pyast.parse(content)
                             processAstModule(entryUri, astModule, item)
                         }
-                }
-                    } catch (e) {
-                        const err = <Error>e
-                        output.appendLine(err.message + '\r\n' + err.stack)
                     }
+                } catch (e) {
+                    const err = <Error>e
+                    output.appendLine(err.message + '\r\n' + err.stack)
+                }
             }
             if (item.children.size === 0) {
                 const itemType = item.id.split(':')[0]
@@ -799,7 +799,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let resolverLock: Promise<void> = Promise.resolve()
     const activeResolves:Set<string> = new Set<string>()
 
-    controller.resolveHandler = async (item?: vscode.TestItem) => {
+    async function discoverTestItems(item?: vscode.TestItem) {
         const guardId = item?.id ?? '__root__'
         if (!activeResolves.has(guardId)) {
             activeResolves.add(guardId)
@@ -829,6 +829,8 @@ export async function activate(context: vscode.ExtensionContext) {
             await resolverLock
         }
     }
+
+    controller.resolveHandler = discoverTestItems
 
     controller.refreshHandler = async () => {
         // evicting from own list to ensure anything we extend into it later has proper upkeep on refresh

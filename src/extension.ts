@@ -831,8 +831,14 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     controller.refreshHandler = async () => {
-        testItems.clear()
-        controller.items.replace([])
+        // evicting from own list to ensure anything we extend into it later has proper upkeep on refresh
+        for (const [id,] of testItems) {
+            const parts = id.split(':')
+            const typeName = parts[0]
+            parts.shift()
+            const uri = parts.join(':')
+            destroyTestItem(typeName, vscode.Uri.parse(uri))
+        }
         ensureWorkspaceItems()
         refreshWatchers()
         for (const [, rootItem] of controller.items) {

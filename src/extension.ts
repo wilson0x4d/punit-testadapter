@@ -464,7 +464,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 key,
                 name,
                 uri.with({fragment: uri.fragment?.startsWith('dyndata') ? uri.fragment : ''}))
-            item.canResolveChildren = (type === 'folder') || (type === 'module') || (type === 'class') || (type === 'root')
+            item.canResolveChildren = (type !== 'dyndata') && (type !== 'function')
             testItems.set(key, item)
         }
         if (range) {

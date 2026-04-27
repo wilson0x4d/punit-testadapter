@@ -1,0 +1,17 @@
+#!/bin/bash
+set -uo pipefail
+
+nvm use
+npm install
+
+export PS1='(punit-testadapter) \$ '
+echo -n -e "\033]0;punit-testadapter\007"
+
+export SCRIPTS_PATH="$(realpath '.scripts')"
+if ! [[ ":PATH:" == *":$SCRIPTS_PATH:"* ]]; then
+    export PATH="$SCRIPTS_PATH:$PATH"
+fi
+export NODE_BIN_PATH="$(realpath './node_modules/.bin')"
+if ! [[ ":PATH:" == *":$NODE_BIN_PATH:"* ]]; then
+    export PATH="$NODE_BIN_PATH:$PATH"
+fi

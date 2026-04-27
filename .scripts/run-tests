@@ -1,0 +1,4 @@
+#!/bin/bash
+set -uo pipefail
+
+npm test

@@ -678,7 +678,7 @@ export async function activate(context: vscode.ExtensionContext) {
                                     remoteRoot: workspaceFolder.uri.fsPath
                                 }
                             ],
-                            justMyCode: false,
+                            justMyCode: true,
                             console: 'integratedTerminal',
                             redirectOutput: true
                         }

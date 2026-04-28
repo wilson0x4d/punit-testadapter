@@ -317,9 +317,9 @@ export async function activate(context: vscode.ExtensionContext) {
         return false
     }
 
-    const knownTestTags:Map<string, vscode.TestTag> = new Map<string, vscode.TestTag>()
-    function getOrCreateTestTag(id:string): vscode.TestTag {
-        let exists:vscode.TestTag|undefined = knownTestTags.get(id)
+    const knownTestTags: Map<string, vscode.TestTag> = new Map<string, vscode.TestTag>()
+    function getOrCreateTestTag(id: string): vscode.TestTag {
+        let exists: vscode.TestTag | undefined = knownTestTags.get(id)
         if (!exists) {
             exists = new vscode.TestTag(id)
             knownTestTags.set(id, exists)
@@ -328,7 +328,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     function getTestTags(decorator_list: pyast.ExprNode[] | undefined): vscode.TestTag[] {
-        const results:vscode.TestTag[] = []
+        const results: vscode.TestTag[] = []
         if (decorator_list) {
             for (let decorator_node of decorator_list) {
                 switch (decorator_node.nodeType) {
@@ -358,10 +358,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     function processAstFunction(uri: vscode.Uri, astFunction: pyast.FunctionDef, parent: vscode.TestItem): vscode.TestItem | undefined {
         if (hasDecorator(astFunction?.decorator_list, ['fact', 'theory'])) {
-            const range:vscode.Range = new vscode.Range(
-                astFunction.lineno-1,
+            const range: vscode.Range = new vscode.Range(
+                astFunction.lineno - 1,
                 0,
-                (astFunction.end_lineno ?? astFunction.lineno+astFunction.body.length),
+                (astFunction.end_lineno ?? astFunction.lineno + astFunction.body.length),
                 0)
             const child = getTestItem('function', uri.with({ fragment: astFunction.name }), astFunction.name, range)
             child.tags = getTestTags(astFunction.decorator_list)
@@ -378,10 +378,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     function processAstClass(uri: vscode.Uri, astClass: pyast.ClassDef, parent: vscode.TestItem): vscode.TestItem | undefined {
         const classUri = uri.with({ fragment: astClass.name })
-        const range:vscode.Range = new vscode.Range(
-            astClass.lineno-1,
+        const range: vscode.Range = new vscode.Range(
+            astClass.lineno - 1,
             astClass.col_offset,
-            astClass.lineno-1,
+            astClass.lineno - 1,
             astClass.col_offset + astClass.name.length + 6)
         const child = getTestItem('class', classUri, astClass.name, range)
         const discovered: Set<string> = new Set<string>()
@@ -458,14 +458,14 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     const testItems: Map<string, vscode.TestItem> = new Map<string, vscode.TestItem>()
-    function getTestItem(type: string, uri: vscode.Uri, name: string, range?:vscode.Range): vscode.TestItem {
+    function getTestItem(type: string, uri: vscode.Uri, name: string, range?: vscode.Range): vscode.TestItem {
         const key = `${type}:${uri}`
         let item = testItems.get(key)
         if (!item) {
             item = controller.createTestItem(
                 key,
                 name,
-                uri.with({fragment: ''}))
+                uri.with({ fragment: '' }))
             item.canResolveChildren = (type !== 'dyndata') && (type !== 'function')
             testItems.set(key, item)
         }
@@ -509,9 +509,9 @@ export async function activate(context: vscode.ExtensionContext) {
         if (qnitem && dataparts.length > 1) {
             // this test ran "with data" so we dynamically create "data-specific" test items instead of returning the parent item
             dataparts.shift()
-            const the_data:string = `(${dataparts.join(',')}`
+            const the_data: string = `(${dataparts.join(',')}`
             const dyndata_hash = Buffer.from(parsedTestResult.name).toString('base64')
-            const dyndata_item = getTestItem('dyndata', qnitem.uri!.with({fragment: dyndata_hash}), `${qnitem.label}${the_data}}`, qnitem.range)
+            const dyndata_item = getTestItem('dyndata', qnitem.uri!.with({ fragment: dyndata_hash }), `${qnitem.label}${the_data}}`, qnitem.range)
             qnitem.children.add(dyndata_item)
             return dyndata_item
         } else {
@@ -669,7 +669,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         pythonArgs = ['-m', 'coverage', 'run', ...pythonArgs]
                     }
                     let debuggerPortNumber: number | undefined = undefined
-                    let debugWaiter: Thenable<boolean>|undefined = undefined
+                    let debugWaiter: Thenable<boolean> | undefined = undefined
                     if (isDebugRun) {
                         debuggerPortNumber = await getDebuggerPortNumber()
                         pythonArgs = ['-m', 'debugpy', '--connect', `0.0.0.0:${debuggerPortNumber}`, ...pythonArgs]
@@ -691,7 +691,7 @@ export async function activate(context: vscode.ExtensionContext) {
                             console: 'integratedTerminal',
                             redirectOutput: true
                         }
-                        const debugSessionOptions:vscode.DebugSessionOptions = {
+                        const debugSessionOptions: vscode.DebugSessionOptions = {
                             suppressDebugView: true
                         }
                         debugWaiter = vscode.debug.startDebugging(workspaceFolder, debugConfig, debugSessionOptions)
@@ -809,7 +809,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(coverageRunProfile)
 
     let resolverLock: Promise<void> = Promise.resolve()
-    const activeResolves:Set<string> = new Set<string>()
+    const activeResolves: Set<string> = new Set<string>()
 
     async function discoverTestItems(item?: vscode.TestItem) {
         const guardId = item?.id ?? '__root__'

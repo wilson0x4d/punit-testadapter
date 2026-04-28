@@ -98,7 +98,8 @@ function getTestPackageName(workspaceFolder: vscode.WorkspaceFolder): string {
         .trim()
         .split(path.sep)
         .filter((v,) => v.length > 0)[0]
-    output.appendLine(`--test-package: ${workspaceFolder.name}/${name}`)
+    // TODO: add verbose option
+    // output.appendLine(`--test-package: ${workspaceFolder.name}/${name}`)
     return name
 }
 
@@ -129,7 +130,8 @@ async function whichPythonExe(workspaceFolder: vscode.WorkspaceFolder): Promise<
     const pythonPath = pythonConfig.get<string>('defaultInterpreterPath')
     if (pythonPath && pythonPath.trim().length) { return pythonPath }
     // failover to hardcoded defaults
-    output.appendLine('.. using hardcoded python!')
+    // TODO: add verbose option
+    // output.appendLine('.. using hardcoded python!')
     return process.platform !== 'win32' ? 'python3' : 'python'
 }
 
@@ -613,6 +615,9 @@ export async function activate(context: vscode.ExtensionContext) {
         let anyFailed: boolean = false
         switch (testResult.status) {
             case 'pass':
+                if (testResult.message) {
+                    testRun.appendOutput(testResult.message.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n'), undefined, item)
+                }
                 testRun.passed(item, testResult.took)
                 break
             case 'fail':
@@ -639,18 +644,22 @@ export async function activate(context: vscode.ExtensionContext) {
                     const excludedFilterItemMap = excludedWorkspaceFiltersMap.get(workspaceFolder.name)
                     const excludedTestFilters = excludedFilterItemMap ? [...excludedFilterItemMap.keys()] : []
                     const aggregateTestFilters = [...excludedTestFilters, ...includedTestFilters].join('\n')
-                    output.appendLine(`.. WORKSPACE ${workspaceFolder.name}, included ${includedTestFilters.length ?? 0}, excluded ${excludedTestFilters.length ?? 0}`)
+                    // TODO: add verbose option
+                    // output.appendLine(`.. WORKSPACE ${workspaceFolder.name}, included ${includedTestFilters.length ?? 0}, excluded ${excludedTestFilters.length ?? 0}`)
                     if (aggregateTestFilters.length === 0) {
-                        output.appendLine(`.. nothing to do, skipping.`)
+                        // TODO: add verbose option
+                        // output.appendLine(`.. nothing to do, skipping.`)
                         continue
                     }
                     const punitArgs = generateToolArgs(workspaceFolder)
                     const pythonExe = await whichPythonExe(workspaceFolder)
-                    output.appendLine(`.. PYTHON: ${pythonExe}`)
+                    // TODO: add verbose option
+                    // output.appendLine(`.. PYTHON: ${pythonExe}`)
                     const pythonPath = isDebugRun
                         ? `${await computePythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
                         : await computePythonPath(workspaceFolder)
-                    output.appendLine(`.. PYTHONPATH: ${pythonPath}`)
+                    // TODO: add verbose option
+                    // output.appendLine(`.. PYTHONPATH: ${pythonPath}`)
                     const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1' }
                     let pythonArgs = ['-m', 'punit', ...punitArgs]
                     if (isCoverageRun) {
@@ -733,7 +742,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     ps.stdout.on('data', chunk => {
                         const testResult = stdout_decoder.decode(chunk, { stream: false })
                         collectedResults.push(testResult)
-                        output.appendLine(testResult)
+                        // TODO: add verbose option
+                        // output.appendLine(testResult)
                     })
                     const stderr_decoder = new TextDecoder('utf-8')
                     ps.stderr.on('data', chunk => {
@@ -749,10 +759,12 @@ export async function activate(context: vscode.ExtensionContext) {
                     await Promise.race([
                         closePromise.then(([code,]) => {
                             if (code && code !== 0) {
-                                output.appendLine(`\r\nERROR! exitcode ${code}`)
+                                // TODO: add verbose option
+                                // output.appendLine(`\r\nERROR! exitcode ${code}`)
                             }
                         }),
                         errorPromise.then(([err]) => {
+                            // TODO: add verbose option
                             output.appendLine(`\r\nERROR! ${err.message}`)
                         })
                     ])

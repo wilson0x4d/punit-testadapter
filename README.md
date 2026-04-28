@@ -1,5 +1,11 @@
 
-..an "official" test-adapter for [pUnit](https://pUnit.readthedocs.io), a modernized Python unit-test framework inspired by `xUnit`.
+..an "official" test-adapter for [pUnit](https://pypi.org/project/pUnit/), a modernized Python unit-test framework inspired by `xUnit`.
+
+## Requirements
+
+In your Python workspace you should install [`pUnit>=1.3`](https://pypi.org/project/pUnit/) as a development dependency.
+
+Moving forward this extension will maintain compatibility with graceful handling of older versions.
 
 ## Contributing
 

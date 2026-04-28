@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
 
-sed "s/0.0.1/$SEMVER/g" --in-place package.json
+sed "s/\"version\"\: \"0.0.1\"/\"version\"\: \"$SEMVER\"/g" --in-place package.json
 
 npm run compile
 

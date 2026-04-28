@@ -66,7 +66,7 @@ async function waitForDebugger(port: number, timeout = 5000): Promise<void> {
             await new Promise<void>((resolve, reject) => {
                 const socket = new net.Socket()
                 socket.setTimeout(500)
-                socket.once('connect', () => { 
+                socket.once('connect', () => {
                     socket.destroy()
                     resolve()
                 })
@@ -300,7 +300,7 @@ export async function activate(context: vscode.ExtensionContext) {
                                 id = (call.func as pyast.Name).id;
                             } else if (call.func.nodeType === 'Attribute') {
                                 id = (call.func as pyast.Attribute).attr;
-                            }                            
+                            }
                             if (id === decoratorName) {
                                 return true
                             }
@@ -339,8 +339,8 @@ export async function activate(context: vscode.ExtensionContext) {
                             id = (call.func as pyast.Name).id;
                         } else if (call.func.nodeType === 'Attribute') {
                             id = (call.func as pyast.Attribute).attr;
-                        }                            
-                        if (id === 'trait') {                            
+                        }
+                        if (id === 'trait') {
                             if (call.args.length > 1) {
                                 results.push(
                                     getOrCreateTestTag(
@@ -449,8 +449,8 @@ export async function activate(context: vscode.ExtensionContext) {
         // TODO: we want a clean tree, but because vscode races against itself (!@#$) this can't be done here
         // pruneOrphans(child.children, discovered)
         // if (child.children.size > 0) {
-             parent.children.add(child)
-             return child
+        parent.children.add(child)
+        return child
         // } else {
         //     destroyTestItem('module', uri)
         //     return undefined
@@ -677,9 +677,9 @@ export async function activate(context: vscode.ExtensionContext) {
                             name: 'Attach to pUnit',
                             type: 'debugpy',
                             request: 'attach',
-                            listen: { 
+                            listen: {
                                 host: '127.0.0.1',
-                                port: debuggerPortNumber 
+                                port: debuggerPortNumber
                             },
                             pathMappings: [
                                 {
@@ -714,6 +714,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         await waitForDebugger(debuggerPortNumber, 5000)
                     }
 
+                    pythonArgs = ['-Xfrozen_modules=off', ...pythonArgs]
                     const ps = cp.spawn(
                         pythonExe,
                         pythonArgs,

@@ -3,6 +3,7 @@
   "name": "punit-testadapter",
   "displayName": "pUnit Test Adapter",
   "description": "..add support for `pUnit`, a modernized unit-test framework for Python inspired by `xUnit`.",
+  "icon": "package.png",
   "version": "0.0.1",
   "repository": "https://github.com/wilson0x4d/punit-testadapter",
   "type": "commonjs",

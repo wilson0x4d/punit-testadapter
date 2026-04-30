@@ -509,7 +509,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if (qnitem && dataparts.length > 1) {
             // this test ran "with data" so we dynamically create "data-specific" test items instead of returning the parent item
             dataparts.shift()
-            const the_data: string = `(${dataparts.join(',')}`
+            const the_data: string = `(${dataparts.join(',')}`.replace(',)', ')')
             const dyndata_hash = Buffer.from(parsedTestResult.name).toString('base64')
             const dyndata_item = getTestItem('dyndata', qnitem.uri!.with({ fragment: dyndata_hash }), `${qnitem.label}${the_data}}`, qnitem.range)
             qnitem.children.add(dyndata_item)

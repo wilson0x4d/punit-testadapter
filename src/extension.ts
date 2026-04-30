@@ -596,11 +596,10 @@ export async function activate(context: vscode.ExtensionContext) {
                     const entryUri = vscode.Uri.joinPath(folderUri, pathPart)
                     const buf = await vscode.workspace.fs.readFile(entryUri)
                     const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
+                    destroyTestItem('module', entryUri)
                     if (isTestCandidate(content)) {
                         const astModule: pyast.Module = pyast.parse(content)
                         processAstModule(entryUri, astModule, parent)
-                    } else {
-                        destroyTestItem('module', entryUri)
                     }
                 } catch (e) {
                     const err = <Error>e

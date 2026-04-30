@@ -589,7 +589,9 @@ export async function activate(context: vscode.ExtensionContext) {
         let folderUri = workspaceFolder.uri
         for (let index = 0; index < remainingPathParts.length; index++) {
             const pathPart = remainingPathParts[index]
-            if (pathPart.endsWith('.py')) {
+            if (pathPart.length === 0) {
+                continue
+            } else if (pathPart.endsWith('.py')) {
                 try {
                     const entryUri = vscode.Uri.joinPath(folderUri, pathPart)
                     const buf = await vscode.workspace.fs.readFile(entryUri)

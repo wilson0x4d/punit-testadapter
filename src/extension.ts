@@ -104,7 +104,7 @@ function getTestPackageName(workspaceFolder: vscode.WorkspaceFolder): string {
 }
 
 function getWatcherPattern(workspaceFolder: vscode.WorkspaceFolder): string {
-    return `${getTestPackageName(workspaceFolder)}/**/*.py`
+    return `**/${getTestPackageName(workspaceFolder)}/**/*.py`
 }
 
 async function whichPythonExe(workspaceFolder: vscode.WorkspaceFolder): Promise<string> {

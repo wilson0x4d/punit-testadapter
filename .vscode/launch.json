@@ -11,7 +11,7 @@
             "request": "launch",
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",
-                "/home/wilson0x4d/code/wilson0x4d/punit/"
+                "${workspaceFolder}/../punit/"
             ],
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js"

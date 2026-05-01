@@ -3,6 +3,6 @@ set -uo pipefail
 
 sed "s/\"version\"\: \"0.0.1\"/\"version\"\: \"$SEMVER\"/g" --in-place package.json
 
-npm run compile
+npm run package
 
 vsce package

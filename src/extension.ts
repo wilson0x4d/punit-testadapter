@@ -542,6 +542,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 const testPackageName = getTestPackageName(workspaceFolder)
                 folderUri = vscode.Uri.joinPath(folderUri, testPackageName)
             }
+            try {
             const entries = [...await fs.readdir(folderUri.fsPath, { withFileTypes: true })]
             for (const entry of entries) {
                 if (entry.name.startsWith('__') && entry.name.endsWith('__')) {
@@ -572,6 +573,10 @@ export async function activate(context: vscode.ExtensionContext) {
                 if (itemType === 'folder') {
                     ///destroyTestItem(itemType, item.uri!)
                 }
+                }
+            } catch (e) {
+                const err = <Error>e
+                output.appendLine(err.message + '\r\n' + err.stack)
             }
         } else if (item.id.startsWith('folder')) {
             ///destroyTestItem('folder', item.uri!)

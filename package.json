@@ -15,8 +15,8 @@
   ],
   "activationEvents": [
     "onView:testing",
-    "workspaceContains:**/tests/",
-    "workspaceContains:tests/"
+    "workspaceContains:**/tests/**",
+    "workspaceContains:tests/**"
   ],
   "main": "./dist/extension.js",
   "contributes": {

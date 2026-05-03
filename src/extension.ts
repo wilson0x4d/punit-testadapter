@@ -92,13 +92,10 @@ const output: vscode.OutputChannel = vscode.window.createOutputChannel('punit-te
 
 
 function getTestPackageName(workspaceFolder: vscode.WorkspaceFolder): string {
-    const name = vscode.workspace
+    const name = `${vscode.workspace
         .getConfiguration('punit', workspaceFolder)
-        .get<string>('--test-package', 'tests')
-        .trim()
-        .split(path.sep)
-        .filter((v,) => v.length > 0)[0]
-    return name
+        .get<string>('--test-package', 'tests')}`.trim()
+    return name.length === 0 ? 'tests' : name
 }
 
 function getWatcherPattern(workspaceFolder: vscode.WorkspaceFolder): string {

@@ -98,8 +98,6 @@ function getTestPackageName(workspaceFolder: vscode.WorkspaceFolder): string {
         .trim()
         .split(path.sep)
         .filter((v,) => v.length > 0)[0]
-    // TODO: add verbose option
-    // output.appendLine(`--test-package: ${workspaceFolder.name}/${name}`)
     return name
 }
 
@@ -446,15 +444,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     break
             }
         }
-        // TODO: we want a clean tree, but because vscode races against itself (!@#$) this can't be done here
-        // pruneOrphans(child.children, discovered)
-        // if (child.children.size > 0) {
         parent.children.add(child)
         return child
-        // } else {
-        //     destroyTestItem('module', uri)
-        //     return undefined
-        // }
     }
 
     const testItems: Map<string, vscode.TestItem> = new Map<string, vscode.TestItem>()
@@ -524,13 +515,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     function ensureWorkspaceItems() {
-        const discovered: Set<string> = new Set<string>()
         vscode.workspace.workspaceFolders?.forEach(workspaceFolder => {
             const testPackageName = getTestPackageName(workspaceFolder)
             const testPackageUri = vscode.Uri.joinPath(workspaceFolder.uri, testPackageName)
             const workspaceItem = getTestItem('root', testPackageUri, workspaceFolder.name)
             controller.items.add(workspaceItem)
-            discovered.add(workspaceItem.id)
         })
     }
 
@@ -543,43 +532,41 @@ export async function activate(context: vscode.ExtensionContext) {
                 folderUri = vscode.Uri.joinPath(folderUri, testPackageName)
             }
             try {
-            const entries = [...await fs.readdir(folderUri.fsPath, { withFileTypes: true })]
-            for (const entry of entries) {
-                if (entry.name.startsWith('__') && entry.name.endsWith('__')) {
-                    // ignore dunder files/folders) such as `__pycache__`, unless they have an extension like `__init__.py`
-                    continue
-                }
-                const entryUri = vscode.Uri.file(path.join(folderUri!.fsPath, entry.name))
-                try {
-                    if (entry.isDirectory()) {
-                        const child = getTestItem('folder', entryUri, entry.name)
-                        item.children.add(child)
-                        await processFolder(child)
-                    } else if (entry.isFile() && entry.name.endsWith('.py')) {
-                        const buf = await vscode.workspace.fs.readFile(entryUri)
-                        const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
-                        if (isTestCandidate(content)) {
-                            const astModule: pyast.Module = pyast.parse(content)
-                            processAstModule(entryUri, astModule, item)
-                        }
+                const entries = [...await fs.readdir(folderUri.fsPath, { withFileTypes: true })]
+                for (const entry of entries) {
+                    if (entry.name.startsWith('__') && entry.name.endsWith('__')) {
+                        // ignore dunder files/folders) such as `__pycache__`, unless they have an extension like `__init__.py`
+                        continue
                     }
-                } catch (e) {
-                    const err = <Error>e
-                    output.appendLine(err.message + '\r\n' + err.stack)
+                    const entryUri = vscode.Uri.file(path.join(folderUri!.fsPath, entry.name))
+                    try {
+                        if (entry.isDirectory()) {
+                            const child = getTestItem('folder', entryUri, entry.name)
+                            item.children.add(child)
+                            await processFolder(child)
+                        } else if (entry.isFile() && entry.name.endsWith('.py')) {
+                            const buf = await vscode.workspace.fs.readFile(entryUri)
+                            const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
+                            if (isTestCandidate(content)) {
+                                const astModule: pyast.Module = pyast.parse(content)
+                                processAstModule(entryUri, astModule, item)
+                            }
+                        }
+                    } catch (e) {
+                        const err = <Error>e
+                        output.appendLine(err.message + '\r\n' + err.stack)
+                    }
                 }
-            }
-            if (item.children.size === 0) {
-                const itemType = item.id.split(':')[0]
-                if (itemType === 'folder') {
-                    ///destroyTestItem(itemType, item.uri!)
-                }
+                if (item.children.size === 0) {
+                    const itemType = item.id.split(':')[0]
+                    if (itemType === 'folder') {
+                        ///destroyTestItem(itemType, item.uri!)
+                    }
                 }
             } catch (e) {
                 const err = <Error>e
                 output.appendLine(err.message + '\r\n' + err.stack)
             }
-        } else if (item.id.startsWith('folder')) {
-            ///destroyTestItem('folder', item.uri!)
         }
     }
 
@@ -650,22 +637,14 @@ export async function activate(context: vscode.ExtensionContext) {
                     const excludedFilterItemMap = excludedWorkspaceFiltersMap.get(workspaceFolder.name)
                     const excludedTestFilters = excludedFilterItemMap ? [...excludedFilterItemMap.keys()] : []
                     const aggregateTestFilters = [...excludedTestFilters, ...includedTestFilters].join('\n')
-                    // TODO: add verbose option
-                    // output.appendLine(`.. WORKSPACE ${workspaceFolder.name}, included ${includedTestFilters.length ?? 0}, excluded ${excludedTestFilters.length ?? 0}`)
                     if (aggregateTestFilters.length === 0) {
-                        // TODO: add verbose option
-                        // output.appendLine(`.. nothing to do, skipping.`)
                         continue
                     }
                     const punitArgs = generateToolArgs(workspaceFolder)
                     const pythonExe = await whichPythonExe(workspaceFolder)
-                    // TODO: add verbose option
-                    // output.appendLine(`.. PYTHON: ${pythonExe}`)
                     const pythonPath = isDebugRun
                         ? `${await computePythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
                         : await computePythonPath(workspaceFolder)
-                    // TODO: add verbose option
-                    // output.appendLine(`.. PYTHONPATH: ${pythonPath}`)
                     const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1' }
                     let pythonArgs = ['-m', 'punit', ...punitArgs]
                     if (isCoverageRun) {
@@ -749,8 +728,6 @@ export async function activate(context: vscode.ExtensionContext) {
                     ps.stdout.on('data', chunk => {
                         const testResult = stdout_decoder.decode(chunk, { stream: false })
                         collectedResults.push(testResult)
-                        // TODO: add verbose option
-                        // output.appendLine(testResult)
                     })
                     const stderr_decoder = new TextDecoder('utf-8')
                     ps.stderr.on('data', chunk => {
@@ -766,13 +743,12 @@ export async function activate(context: vscode.ExtensionContext) {
                     await Promise.race([
                         closePromise.then(([code,]) => {
                             if (code && code !== 0) {
-                                // TODO: add verbose option
-                                // output.appendLine(`\r\nERROR! exitcode ${code}`)
+                                // NOP
                             }
                         }),
-                        errorPromise.then(([err]) => {
-                            // TODO: add verbose option
-                            output.appendLine(`\r\nERROR! ${err.message}`)
+                        errorPromise.then(([e]) => {
+                            const err = <Error>e
+                            output.appendLine(err.message + '\r\n' + err.stack)
                         })
                     ])
 

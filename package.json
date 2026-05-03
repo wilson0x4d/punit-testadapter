@@ -28,6 +28,11 @@
           "default": "tests",
           "description": "pUnit `--test-package` argument",
           "scope": "workspace"
+        },
+        "punit.PYTHONPATH": {
+          "type": "string",
+          "description": "override PYTHONPATH for test runs",
+          "scope": "workspace"
         }
       }
     }

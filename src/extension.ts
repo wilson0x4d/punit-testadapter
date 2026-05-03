@@ -136,19 +136,37 @@ async function whichDebugpyPath(): Promise<string> {
     return path.dirname(await pythonExtension!.exports.debug.getDebuggerPackagePath())
 }
 
-async function computePythonPath(workspaceFolder: vscode.WorkspaceFolder | undefined): Promise<string> {
-    const root = !workspaceFolder ? '.' : workspaceFolder.uri.fsPath
-    try {
-        // if there is a `src` dir, use it
-        const srcStat = await vscode.workspace.fs.stat(vscode.Uri.file(path.join(root, 'src')))
-        if (srcStat.type === vscode.FileType.Directory) { return path.join(root, 'src') }
-    } catch (e) {
-        // NOP
-        const err = <Error>e
-        output.appendLine(err.message + '\r\n' + err.stack)
+async function getPythonPath(workspaceFolder: vscode.WorkspaceFolder): Promise<string> {
+    let configuredPythonPath = `${vscode.workspace
+        .getConfiguration('punit', workspaceFolder)
+        .get<string|undefined>('PYTHONPATH', undefined)}`
+    if (configuredPythonPath && configuredPythonPath.length > 0) {
+        // even if intentionally set to nothing/whitespace we will use it.
+        vscode.workspace.workspaceFolders?.forEach(workspaceFolder => {
+            // implemment workspace substitutions
+            configuredPythonPath = configuredPythonPath
+                .replaceAll("${workspaceFolder:" + workspaceFolder.name + "}", workspaceFolder.uri.fsPath)
+                .replaceAll("${workspaceFolder}", workspaceFolder.uri.fsPath)
+        })
+        return configuredPythonPath
+    } else if (process.env.PYTHONPATH && process.env.PYTHONPATH.length > 0) {                
+        return process.env.PYTHONPATH
+    } else {
+        let computedPythonPath = workspaceFolder.uri.fsPath
+        try {
+            // if there is a `src` dir, use it (common convention)
+            const srcStat = await vscode.workspace.fs.stat(vscode.Uri.file(path.join(computedPythonPath, 'src')))
+            if (srcStat.type === vscode.FileType.Directory) {
+                computedPythonPath = path.join(computedPythonPath, 'src')
+            }
+        } catch (e) {
+            // NOP
+            const err = <Error>e
+            output.appendLine(err.message + '\r\n' + err.stack)
+        }
+        // otherwise, use the workspace root
+        return computedPythonPath
     }
-    // otherwise, use the workspace root
-    return root
 }
 
 function createWorkspaceFilter(prefix: string): string {
@@ -646,8 +664,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     const punitArgs = generateToolArgs(workspaceFolder)
                     const pythonExe = await whichPythonExe(workspaceFolder)
                     const pythonPath = isDebugRun
-                        ? `${await computePythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
-                        : await computePythonPath(workspaceFolder)
+                        ? `${await getPythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
+                        : await getPythonPath(workspaceFolder)
                     const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1' }
                     let pythonArgs = ['-m', 'punit', ...punitArgs]
                     if (isCoverageRun) {

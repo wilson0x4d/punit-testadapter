@@ -13,7 +13,7 @@ import { randomInt } from 'node:crypto'
 
 
 type ParsedTestResult = {
-    status: 'pass' | 'fail'
+    status: 'pass' | 'fail' | 'skip' | 'error'
     name: string
     took: number
     message: string | undefined
@@ -604,7 +604,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    function recursiveTestItemUpdate(testRun: vscode.TestRun, item: vscode.TestItem, testResult: ParsedTestResult): boolean {
+    function updateTestItemWithResult(testRun: vscode.TestRun, item: vscode.TestItem, testResult: ParsedTestResult): boolean {
         let anyFailed: boolean = false
         switch (testResult.status) {
             case 'pass':
@@ -615,6 +615,12 @@ export async function activate(context: vscode.ExtensionContext) {
                 break
             case 'fail':
                 testRun.failed(item, new vscode.TestMessage(testResult.message!), testResult.took)
+                break
+            case 'skip':
+                testRun.skipped(item)
+                break
+            case 'error':
+                testRun.errored(item, new vscode.TestMessage(testResult.message!), testResult.took)
                 break
         }
         return anyFailed
@@ -754,11 +760,25 @@ export async function activate(context: vscode.ExtensionContext) {
 
                     // process test results
                     const testResultsJson = collectedResults.join(' ')
-                    const testResults = JSON.parse(testResultsJson)
-                    for (const testResult of testResults) {
-                        const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, <ParsedTestResult>testResult)
-                        if (executedTestItem) {
-                            recursiveTestItemUpdate(testRun, executedTestItem, testResult)
+                    try {
+                        const testResults = JSON.parse(testResultsJson)
+                        for (const testResult of testResults) {
+                            const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, <ParsedTestResult>testResult)
+                            if (executedTestItem) {
+                                updateTestItemWithResult(testRun, executedTestItem, testResult)
+                            }
+                        }
+                    } catch (e) {
+                        const err = <Error>e
+                        output.appendLine(err.message + '\r\n' + err.stack)
+                        const workspaceItem = controller.items.get(`root:${workspaceFolder.uri}/${getTestPackageName(workspaceFolder)}`)
+                        if (workspaceItem) {
+                            updateTestItemWithResult(testRun, workspaceItem, <ParsedTestResult>{
+                                name: workspaceFolder.name,
+                                status: testResultsJson.length === 0 ? 'skip' : 'error',
+                                message: testResultsJson.length === 0 ? 'No Tests Run' : testResultsJson,
+                                took: 0
+                            })
                         }
                     }
                 }

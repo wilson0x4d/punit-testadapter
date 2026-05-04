@@ -139,17 +139,17 @@ async function whichDebugpyPath(): Promise<string> {
 async function getPythonPath(workspaceFolder: vscode.WorkspaceFolder): Promise<string> {
     let configuredPythonPath = `${vscode.workspace
         .getConfiguration('punit', workspaceFolder)
-        .get<string|undefined>('PYTHONPATH', undefined)}`
+        .get<string | undefined>('PYTHONPATH', undefined)}`
     if (configuredPythonPath && configuredPythonPath.length > 0) {
         // even if intentionally set to nothing/whitespace we will use it.
         vscode.workspace.workspaceFolders?.forEach(workspaceFolder => {
             // implemment workspace substitutions
             configuredPythonPath = configuredPythonPath
-                .replaceAll("${workspaceFolder:" + workspaceFolder.name + "}", workspaceFolder.uri.fsPath)
-                .replaceAll("${workspaceFolder}", workspaceFolder.uri.fsPath)
+                .replaceAll('${workspaceFolder:' + workspaceFolder.name + '}', workspaceFolder.uri.fsPath)
+                .replaceAll('${workspaceFolder}', workspaceFolder.uri.fsPath)
         })
         return configuredPythonPath
-    } else if (process.env.PYTHONPATH && process.env.PYTHONPATH.length > 0) {                
+    } else if (process.env.PYTHONPATH && process.env.PYTHONPATH.length > 0) {
         return process.env.PYTHONPATH
     } else {
         let computedPythonPath = workspaceFolder.uri.fsPath
@@ -310,9 +310,9 @@ export async function activate(context: vscode.ExtensionContext) {
                             const call = (<pyast.Call>decorator_node)
                             let id = ''
                             if (call.func.nodeType === 'Name') {
-                                id = (call.func as pyast.Name).id;
+                                id = (call.func as pyast.Name).id
                             } else if (call.func.nodeType === 'Attribute') {
-                                id = (call.func as pyast.Attribute).attr;
+                                id = (call.func as pyast.Attribute).attr
                             }
                             if (id === decoratorName) {
                                 return true
@@ -349,9 +349,9 @@ export async function activate(context: vscode.ExtensionContext) {
                         const call = (<pyast.Call>decorator_node)
                         let id = ''
                         if (call.func.nodeType === 'Name') {
-                            id = (call.func as pyast.Name).id;
+                            id = (call.func as pyast.Name).id
                         } else if (call.func.nodeType === 'Attribute') {
-                            id = (call.func as pyast.Attribute).attr;
+                            id = (call.func as pyast.Attribute).attr
                         }
                         if (id === 'trait') {
                             if (call.args.length > 1) {
@@ -728,10 +728,10 @@ export async function activate(context: vscode.ExtensionContext) {
                             cwd: workspaceFolder.uri.fsPath,
                             env: pythonEnv,
                             shell: false,
-                            stdio: ["pipe", "overlapped", "overlapped"]
+                            stdio: ['pipe', 'overlapped', 'overlapped']
                         })
 
-                    ps.stdin!.write(aggregateTestFilters, "utf8", err => {
+                    ps.stdin!.write(aggregateTestFilters, 'utf8', err => {
                         if (err) {
                             ps.kill()
                         }
@@ -761,10 +761,11 @@ export async function activate(context: vscode.ExtensionContext) {
                     const errorPromise = once(ps, 'error') as Promise<[Error]>
 
                     // Race the two: if `error` fires first we reject, otherwise we resolve with close args
+                    let exitCode: number = 0
                     await Promise.race([
                         closePromise.then(([code,]) => {
                             if (code && code !== 0) {
-                                // NOP
+                                exitCode = code
                             }
                         }),
                         errorPromise.then(([e]) => {
@@ -774,24 +775,45 @@ export async function activate(context: vscode.ExtensionContext) {
                     ])
 
                     // process test results
-                    const testResultsJson = collectedResults.join(' ')
-                    try {
-                        const testResults = JSON.parse(testResultsJson)
-                        for (const testResult of testResults) {
-                            const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, <ParsedTestResult>testResult)
-                            if (executedTestItem) {
-                                updateTestItemWithResult(testRun, executedTestItem, testResult)
+                    if (exitCode === 0 || exitCode === 119) {
+                        const testResultsJson = collectedResults.join(' ')
+                        try {
+                            const testResults = JSON.parse(testResultsJson)
+                            for (const testResult of testResults) {
+                                const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, <ParsedTestResult>testResult)
+                                if (executedTestItem) {
+                                    updateTestItemWithResult(testRun, executedTestItem, testResult)
+                                }
+                            }
+                        } catch (e) {
+                            const err = <Error>e
+                            output.appendLine(err.message + '\r\n' + err.stack)
+                            const workspaceItem = controller.items.get(`root:${workspaceFolder.uri}/${getTestPackageName(workspaceFolder)}`)
+                            if (workspaceItem) {
+                                updateTestItemWithResult(testRun, workspaceItem, <ParsedTestResult>{
+                                    name: workspaceFolder.name,
+                                    status: testResultsJson.length === 0 ? 'skip' : 'error',
+                                    message: testResultsJson.length === 0 ? 'No Tests Run' : testResultsJson,
+                                    took: 0
+                                })
                             }
                         }
-                    } catch (e) {
-                        const err = <Error>e
-                        output.appendLine(err.message + '\r\n' + err.stack)
+                    } else {
                         const workspaceItem = controller.items.get(`root:${workspaceFolder.uri}/${getTestPackageName(workspaceFolder)}`)
                         if (workspaceItem) {
+                            let message = `pUnit failed to run (EXITCODE:${exitCode})`
+                            switch (exitCode) {
+                                case 1:
+                                    message += ' \r\nMost likely means pUnit is not installed as a development dependency, \r\ninstall pUnit as a dependency in the affected workspace(s).'
+                                    break
+                                case 4:
+                                    message += ' \r\nThe version of pUnit installed is too old, \r\ntry upgrading to the latest version in the affected workspace(s).'
+                                    break
+                            }
                             updateTestItemWithResult(testRun, workspaceItem, <ParsedTestResult>{
                                 name: workspaceFolder.name,
-                                status: testResultsJson.length === 0 ? 'skip' : 'error',
-                                message: testResultsJson.length === 0 ? 'No Tests Run' : testResultsJson,
+                                status: 'error',
+                                message: message,
                                 took: 0
                             })
                         }

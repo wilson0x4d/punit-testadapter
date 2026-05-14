@@ -102,6 +102,12 @@ function getWatcherPattern(workspaceFolder: vscode.WorkspaceFolder): string {
     return `**/${getTestPackageName(workspaceFolder)}/**/*.py`
 }
 
+function getJustMyCode(workspaceFolder: vscode.WorkspaceFolder): boolean {
+    return vscode.workspace
+        .getConfiguration('punit', workspaceFolder)
+        .get<boolean>('just_my_code', true)
+}
+
 async function whichPythonExe(workspaceFolder: vscode.WorkspaceFolder): Promise<string> {
     try {
         const python = vscode.extensions.getExtension('ms-python.python')
@@ -704,7 +710,7 @@ export async function activate(context: vscode.ExtensionContext) {
                                     remoteRoot: workspaceFolder.uri.fsPath
                                 }
                             ],
-                            justMyCode: true,
+                            justMyCode: getJustMyCode(workspaceFolder),
                             console: 'integratedTerminal',
                             redirectOutput: true
                         }

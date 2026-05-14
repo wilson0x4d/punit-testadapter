@@ -33,6 +33,12 @@
           "type": "string",
           "description": "override PYTHONPATH for test runs",
           "scope": "workspace"
+        },
+        "punit.just_my_code": {
+          "type": "boolean",
+          "default": true,
+          "description": "Restrict test debugger to 'Just My Code'?",
+          "scope": "workspace"
         }
       }
     }

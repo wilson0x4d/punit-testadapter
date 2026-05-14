@@ -662,6 +662,13 @@ export async function activate(context: vscode.ExtensionContext) {
         const isDebugRun = mode.indexOf('debug') > -1
         const isCoverageRun = mode.indexOf('coverage') > -1
         const testRun = controller.createTestRun(request)
+        let activeDebugSession: vscode.DebugSession | undefined
+        function terminateActiveDebugSession() {
+            if (activeDebugSession) {
+                vscode.commands.executeCommand('workbench.action.debug.stop', activeDebugSession.id)
+            }
+            activeDebugSession = undefined
+        }
         try {
             if (!vscode.workspace.workspaceFolders?.[0]) {
                 output.appendLine('No workspace folder(s), aborting.\r\n')
@@ -683,7 +690,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     const pythonPath = isDebugRun
                         ? `${await getPythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
                         : await getPythonPath(workspaceFolder)
-                    const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1' }
+                    const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1', DEBUG_UNCAUGHT_EXCEPTIONS: '0' }
                     let pythonArgs = ['-m', 'punit', ...punitArgs]
                     if (isCoverageRun) {
                         // relies on standard python `coverage` tool, simply injects it as a module resulting in using the 'correct' venv
@@ -714,25 +721,36 @@ export async function activate(context: vscode.ExtensionContext) {
                             console: 'integratedTerminal',
                             redirectOutput: true
                         }
-                        const debugSessionOptions: vscode.DebugSessionOptions = {
-                            suppressDebugView: true
-                        }
-                        debugWaiter = vscode.debug.startDebugging(workspaceFolder, debugConfig, debugSessionOptions)
 
+                        const debugSessionOptions: vscode.DebugSessionOptions = {
+                            testRun: testRun
+                        }
                         setTimeout(async () => {
-                            await vscode.debug.startDebugging(workspaceFolder, debugConfig).then(success => {
-                                if (success) {
-                                    const debuggerSession = vscode.debug.activeDebugSession!
-                                    const debuggerDisposables: vscode.Disposable[] = []
-                                    debuggerDisposables.push(
-                                        vscode.debug.onDidTerminateDebugSession(s => {
-                                            if (s.id === debuggerSession.id) {
-                                                ps.kill()
-                                            }
-                                        })
-                                    )
-                                }
-                            })
+                            try {
+                                await vscode.debug.startDebugging(workspaceFolder, debugConfig, debugSessionOptions).then(success => {
+                                    if (success) {
+                                        const debuggerDisposables: vscode.Disposable[] = []
+                                        debuggerDisposables.push(
+                                            vscode.debug.onDidTerminateDebugSession(s => {
+                                                if (activeDebugSession && s.id === activeDebugSession.id) {
+                                                    terminateActiveDebugSession()
+                                                    ps.kill()
+                                                }
+                                            })
+                                        )
+                                        debuggerDisposables.push(
+                                            vscode.debug.onDidStartDebugSession((session) => {
+                                                // Ensure you only track debug sessions spawned by your specific test run
+                                                if (session.name.includes("pUnit")) {
+                                                    activeDebugSession = session
+                                                }
+                                            })         
+                                        )
+                                    }
+                                })
+                            } catch {
+                                terminateActiveDebugSession()
+                            }
                         }, 0)
                         await waitForDebugger(debuggerPortNumber, 5000)
                     }
@@ -774,9 +792,23 @@ export async function activate(context: vscode.ExtensionContext) {
                     })
 
                     // `once` returns a promise that resolves with the event arguments
-                    const closePromise = once(ps, 'close') as Promise<[number | null, NodeJS.Signals | null]>
+                    const closePromise = once(ps, 'exit') as Promise<[number | null, NodeJS.Signals | null]>
                     const errorPromise = once(ps, 'error') as Promise<[Error]>
-
+                    const processDeadPromise = new Promise<number>((resolve) => {
+                        const interval = setInterval(() => {
+                            try {
+                                // Sending signal 0 does not kill the process. 
+                                // It throws an error ONLY if the process has physically exited/died.
+                                ps.kill(0)
+                            } catch (e) {
+                                clearInterval(interval)
+                                
+                                // The process is confirmed dead by the OS kernel. 
+                                // We can check the exitCode property Node automatically populates
+                                resolve(ps.exitCode ?? 1)
+                            }
+                        }, 100); // Check every 100ms
+                    })                    
                     // Race the two: if `error` fires first we reject, otherwise we resolve with close args
                     let exitCode: number = 0
                     await Promise.race([
@@ -784,11 +816,17 @@ export async function activate(context: vscode.ExtensionContext) {
                             if (code && code !== 0) {
                                 exitCode = code
                             }
+                            terminateActiveDebugSession()
                         }),
                         errorPromise.then(([e]) => {
                             const err = <Error>e
                             output.appendLine(err.message + '\r\n' + err.stack)
-                        })
+                            terminateActiveDebugSession()
+                        }),
+                        processDeadPromise.then((code) => {
+                            exitCode = code
+                            terminateActiveDebugSession()
+                        }),
                     ])
 
                     // process test results

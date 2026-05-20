@@ -12,6 +12,9 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUnusedParameters": true,
-        "moduleResolution": "bundler"
-    }
+        "moduleResolution": "bundler"        
+    },
+    "include": [
+        "src/**/*.ts"
+    ]
 }

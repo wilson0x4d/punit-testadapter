@@ -690,19 +690,21 @@ export async function activate(context: vscode.ExtensionContext) {
                     const pythonPath = isDebugRun
                         ? `${await getPythonPath(workspaceFolder)}${path.delimiter}${await whichDebugpyPath()}`
                         : await getPythonPath(workspaceFolder)
-                    const pythonEnv = { ...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1', DEBUG_UNCAUGHT_EXCEPTIONS: '0' }
+                    let pythonEnv: {} = {...process.env, PYTHONPATH: pythonPath, PYTHONUNBUFFERED: '1', DEBUG_UNCAUGHT_EXCEPTIONS: '0'}
                     let pythonArgs = ['-m', 'punit', ...punitArgs]
                     if (isCoverageRun) {
                         // relies on standard python `coverage` tool, simply injects it as a module resulting in using the 'correct' venv
                         // TODO: produce a coverage report (extension settings)
                         // TODO: support arbitrary coverage args/options (extension settings)
-                        pythonArgs = ['-m', 'coverage', 'run', ...pythonArgs]
+                        pythonArgs = ['-m', 'coverage', 'run', '--save-signal=USR1', ...pythonArgs]
+                        pythonEnv = {...pythonEnv, COVERAGE_RUN: 'True' }
                     }
                     let debuggerPortNumber: number | undefined = undefined
                     let debugWaiter: Thenable<boolean> | undefined = undefined
                     if (isDebugRun) {
                         debuggerPortNumber = await getDebuggerPortNumber()
                         pythonArgs = ['-m', 'debugpy', '--connect', `0.0.0.0:${debuggerPortNumber}`, ...pythonArgs]
+                        pythonEnv = {...pythonEnv, DEBUG_RUN: 'True' }
                         const debugConfig: vscode.DebugConfiguration = {
                             name: 'Attach to pUnit',
                             type: 'debugpy',

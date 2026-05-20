@@ -1,7 +1,9 @@
 #!/bin/bash
 set -uo pipefail
 
-nvm use
+if [ ! -z "$(which nvm)" ]; then
+    nvm use
+fi
 npm install
 
 export PS1='(punit-testadapter) \$ '

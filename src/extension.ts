@@ -293,6 +293,24 @@ function generateToolArgs(workspaceFolder: vscode.WorkspaceFolder): string[] {
     return args
 }
 
+export function extractTestResults<T = unknown>(input: string): T {
+    const trimmed = input.trimEnd()
+    let i = 0
+    while (true) {
+        const idx = trimmed.indexOf('[{"', i)
+        if (idx === -1) {
+            break
+        }
+        const candidate = trimmed.slice(idx)
+        try {
+            return JSON.parse(candidate) as T
+        } catch {
+            i = idx + 1
+        }
+    }
+    throw new Error('Unable to extract test results from output.')
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     await ensureDebuggerActive()
     const controller = vscode.tests.createTestController('punit', 'pUnit Tests')
@@ -833,11 +851,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
                     // process test results
                     if (exitCode === 0 || exitCode === 119) {
-                        const testResultsJson = collectedResults.join(' ')
+                        const raw_output = collectedResults.join(' ')
                         try {
-                            const testResults = JSON.parse(testResultsJson)
+                            const testResults = extractTestResults<ParsedTestResult[]>(raw_output)
                             for (const testResult of testResults) {
-                                const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, <ParsedTestResult>testResult)
+                                const executedTestItem = getTestItemFromParsedTestResult(workspaceFolder, testResult)
                                 if (executedTestItem) {
                                     updateTestItemWithResult(testRun, executedTestItem, testResult)
                                 }
@@ -849,8 +867,8 @@ export async function activate(context: vscode.ExtensionContext) {
                             if (workspaceItem) {
                                 updateTestItemWithResult(testRun, workspaceItem, <ParsedTestResult>{
                                     name: workspaceFolder.name,
-                                    status: testResultsJson.length === 0 ? 'skip' : 'error',
-                                    message: testResultsJson.length === 0 ? 'No Tests Run' : testResultsJson,
+                                    status: raw_output.length === 0 ? 'skip' : 'error',
+                                    message: raw_output.length === 0 ? 'No Tests Run' : raw_output,
                                     took: 0
                                 })
                             }

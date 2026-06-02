@@ -1,0 +1,43 @@
+name: "build"
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/**'
+jobs:
+  package-and-deploy:
+    name: "Package & Deploy"
+    runs-on: builder-py314
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: "Configure"
+        id: configure-build
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install py-conventional-semver
+          export SEMVER=$(conventional-semver)
+          echo "SEMVER=$SEMVER" >> "$GITHUB_ENV"
+          echo "O_V_T=${{ vars.O_V_T }}" >> "$GITHUB_ENV"
+          echo "V_M_T=${{ vars.V_M_T }}" >> "$GITHUB_ENV"
+          emit-context "success" "SEMVER" "${{ gitea.api_url }}" "${{ gitea.repository }}" "${{ gitea.sha }}" "${{ secrets.GITEA_TOKEN }}" "$SEMVER"
+          .scripts/init-env
+      - name: "Test"
+        id: run-tests
+        run: |
+          .scripts/run-tests
+      - name: "Package"
+        id: build-package
+        run: |
+          .scripts/build-package
+      - name: "Deploy"
+        id: deploy-package
+        run: |
+          .scripts/deploy-package
+          git tag "$SEMVER"
+          git push origin "$SEMVER"

@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ -z "$O_V_T" ]; then
+  echo "Error: O_V_T missing."
+  exit 1
+fi
+
+if [ -z "$V_M_T" ]; then
+  echo "Error: V_M_T missing."
+  exit 1
+fi
+
+VSIX_FILE=$(ls *.vsix | head -n 1)
+
+echo "..starting ovsx"
+
+./node_modules/.bin/ovsx publish "$VSIX_FILE" -t "$O_V_T"
+
+echo "ovsx done."
+echo ""
+echo "..starting vsce"
+
+# temp disable ./node_modules/.bin/vsce publish -p "$V_M_T" --packagePath "$VSIX_FILE"
+
+echo "vsce done."
+echo ""

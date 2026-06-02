@@ -289,6 +289,7 @@ function generateToolArgs(workspaceFolder: vscode.WorkspaceFolder): string[] {
     const args: string[] = []
     args.push('--test-package', getTestPackageName(workspaceFolder))
     args.push('--report', 'json')
+    args.push('--no-exitcode')  // because sys.exit and os._exit tamper with debugpy and coveragepy, respectively.
     args.push('--filter', '@stdin')
     return args
 }

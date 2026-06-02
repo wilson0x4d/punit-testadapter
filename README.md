@@ -3,7 +3,9 @@
 
 ## Requirements
 
-In your Python workspace you should install [`pUnit>=1.3.7`](https://pypi.org/project/pUnit/) as a development dependency, preferably within a virtual env.  For the best experience update `pUnit` to a newer release.
+In your Python workspace you should install [`pUnit>=1.3.7`](https://pypi.org/project/pUnit/) as a development dependency, preferably within a virtual env.  
+
+> NOTE: The latest extension version and latest pUnit version are always cross-tested with one another.
 
 ## Contributing
 

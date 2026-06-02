@@ -12,15 +12,20 @@ if [ -z "$V_M_T" ]; then
 fi
 
 VSIX_FILE=$(ls *.vsix | head -n 1)
+OVSX_STORE=file
 
+echo ""
 echo "..starting ovsx"
 
-./node_modules/.bin/ovsx publish "$VSIX_FILE" -t "$O_V_T"
+./node_modules/.bin/ovsx publish "$VSIX_FILE" --registryUrl https://open-vsx.org -p "$O_V_T"
 
+echo ""
 echo "ovsx done."
 sleep 2
+echo ""
 echo "..starting vsce"
 
 ./node_modules/.bin/vsce publish -p "$V_M_T" --packagePath "$VSIX_FILE"
 
+echo ""
 echo "vsce done."

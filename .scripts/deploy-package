@@ -18,10 +18,9 @@ echo "..starting ovsx"
 ./node_modules/.bin/ovsx publish "$VSIX_FILE" -t "$O_V_T"
 
 echo "ovsx done."
-echo ""
+sleep 2
 echo "..starting vsce"
 
-# temp disable ./node_modules/.bin/vsce publish -p "$V_M_T" --packagePath "$VSIX_FILE"
+./node_modules/.bin/vsce publish -p "$V_M_T" --packagePath "$VSIX_FILE"
 
 echo "vsce done."
-echo ""

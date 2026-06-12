@@ -4,3 +4,5 @@ dist/
 out/
 *.vsix
 *.bak
+.venv/
+requirement*.txt

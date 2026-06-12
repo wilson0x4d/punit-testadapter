@@ -6,10 +6,11 @@ import { once } from 'events'
 import * as path from 'node:path'
 import * as fs from 'node:fs/promises'
 import { TextDecoder } from 'util'
-import * as vscode from 'vscode'
-import * as pyast from 'py-ast'
 import * as net from 'net'
 import { randomInt } from 'node:crypto'
+import * as vscode from 'vscode'
+import { AstService } from './ast_service'
+import type { ExprNode, FunctionDef, ClassDef, Module, Call, Name, Attribute } from './py_ast_types'
 
 
 type ParsedTestResult = {
@@ -312,8 +313,11 @@ export function extractTestResults<T = unknown>(input: string): T {
     throw new Error('Unable to extract test results from output.')
 }
 
+let astService: AstService | null = null
+
 export async function activate(context: vscode.ExtensionContext) {
     await ensureDebuggerActive()
+    const extensionUri = context.extensionUri
     const controller = vscode.tests.createTestController('punit', 'pUnit Tests')
     context.subscriptions.push(controller)
 
@@ -321,7 +325,7 @@ export async function activate(context: vscode.ExtensionContext) {
         destroyTestItem('module', uri)
     }
 
-    function hasDecorator(decorator_list: pyast.ExprNode[] | undefined, decoratorNames: string[]): boolean {
+    function hasDecorator(decorator_list: ExprNode[] | undefined, decoratorNames: string[]): boolean {
         if (decorator_list) {
             for (let decorator_node of decorator_list) {
                 switch (decorator_node.nodeType) {
@@ -332,12 +336,12 @@ export async function activate(context: vscode.ExtensionContext) {
                         break
                     case 'Call':
                         for (let decoratorName of decoratorNames) {
-                            const call = (<pyast.Call>decorator_node)
+                            const call = (decorator_node as Call)
                             let id = ''
                             if (call.func.nodeType === 'Name') {
-                                id = (call.func as pyast.Name).id
+                                id = (call.func as Name).id
                             } else if (call.func.nodeType === 'Attribute') {
-                                id = (call.func as pyast.Attribute).attr
+                                id = (call.func as Attribute).attr
                             }
                             if (id === decoratorName) {
                                 return true
@@ -365,18 +369,18 @@ export async function activate(context: vscode.ExtensionContext) {
         return exists
     }
 
-    function getTestTags(decorator_list: pyast.ExprNode[] | undefined): vscode.TestTag[] {
+    function getTestTags(decorator_list: ExprNode[] | undefined): vscode.TestTag[] {
         const results: vscode.TestTag[] = []
         if (decorator_list) {
             for (let decorator_node of decorator_list) {
                 switch (decorator_node.nodeType) {
                     case 'Call':
-                        const call = (<pyast.Call>decorator_node)
+                        const call = (decorator_node as Call)
                         let id = ''
                         if (call.func.nodeType === 'Name') {
-                            id = (call.func as pyast.Name).id
+                            id = (call.func as Name).id
                         } else if (call.func.nodeType === 'Attribute') {
-                            id = (call.func as pyast.Attribute).attr
+                            id = (call.func as Attribute).attr
                         }
                         if (id === 'trait') {
                             if (call.args.length > 1) {
@@ -394,7 +398,7 @@ export async function activate(context: vscode.ExtensionContext) {
         return results
     }
 
-    function processAstFunction(uri: vscode.Uri, astFunction: pyast.FunctionDef, parent: vscode.TestItem): vscode.TestItem | undefined {
+    function processAstFunction(uri: vscode.Uri, astFunction: FunctionDef, parent: vscode.TestItem): vscode.TestItem | undefined {
         if (hasDecorator(astFunction?.decorator_list, ['fact', 'theory'])) {
             const range: vscode.Range = new vscode.Range(
                 astFunction.lineno - 1,
@@ -414,7 +418,7 @@ export async function activate(context: vscode.ExtensionContext) {
         return undefined
     }
 
-    function processAstClass(uri: vscode.Uri, astClass: pyast.ClassDef, parent: vscode.TestItem): vscode.TestItem | undefined {
+    function processAstClass(uri: vscode.Uri, astClass: ClassDef, parent: vscode.TestItem): vscode.TestItem | undefined {
         const classUri = uri.with({ fragment: astClass.name })
         const range: vscode.Range = new vscode.Range(
             astClass.lineno - 1,
@@ -427,13 +431,13 @@ export async function activate(context: vscode.ExtensionContext) {
             switch (node.nodeType) {
                 case 'FunctionDef':
                 case 'AsyncFunctionDef':
-                    const f = processAstFunction(uri, <pyast.FunctionDef>node, child)
+                    const f = processAstFunction(uri, (node as FunctionDef), child)
                     if (f) {
                         discovered.add(f.id)
                     }
                     break
                 case 'ClassDef':
-                    const c = processAstClass(uri, <pyast.ClassDef>node, child)
+                    const c = processAstClass(uri,  (node as ClassDef), child)
                     if (c) {
                         discovered.add(c.id)
                     }
@@ -463,7 +467,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    function processAstModule(uri: vscode.Uri, astModule: pyast.Module, parent: vscode.TestItem): vscode.TestItem | undefined {
+    function processAstModule(uri: vscode.Uri, astModule: Module, parent: vscode.TestItem): vscode.TestItem | undefined {
         const moduleName = uri.path.split('/').reverse()[0]
         const child = getTestItem('module', uri, moduleName, undefined)
         const discovered: Set<string> = new Set<string>()
@@ -471,13 +475,13 @@ export async function activate(context: vscode.ExtensionContext) {
             switch (node.nodeType) {
                 case 'FunctionDef':
                 case 'AsyncFunctionDef':
-                    const f = processAstFunction(uri, <pyast.FunctionDef>node, child)
+                    const f = processAstFunction(uri, (node as FunctionDef), child)
                     if (f) {
                         discovered.add(f.id)
                     }
                     break
                 case 'ClassDef':
-                    const c = processAstClass(uri, <pyast.ClassDef>node, child)
+                    const c = processAstClass(uri,  (node as ClassDef), child)
                     if (c) {
                         discovered.add(c.id)
                     }
@@ -595,7 +599,8 @@ export async function activate(context: vscode.ExtensionContext) {
                             const buf = await vscode.workspace.fs.readFile(entryUri)
                             const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
                             if (isTestCandidate(content)) {
-                                const astModule: pyast.Module = pyast.parse(content)
+                                const astModule = await (astService ??= new AstService(
+                                    await whichPythonExe(vscode.workspace.workspaceFolders![0]), extensionUri)).parseFile(content)
                                 processAstModule(entryUri, astModule, item)
                             }
                         }
@@ -636,7 +641,8 @@ export async function activate(context: vscode.ExtensionContext) {
                     const buf = await vscode.workspace.fs.readFile(entryUri)
                     const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
                     if (isTestCandidate(content)) {
-                        const astModule: pyast.Module = pyast.parse(content)
+                        const astModule = await (astService ??= new AstService(
+                                    await whichPythonExe(vscode.workspace.workspaceFolders![0]), extensionUri)).parseFile(content)
                         const defined = processAstModule(entryUri, astModule, parent)
                         if (!defined) {
                             destroyTestItem('module', entryUri)
@@ -942,7 +948,8 @@ export async function activate(context: vscode.ExtensionContext) {
                             const buf = await vscode.workspace.fs.readFile(item.uri!)
                             const content = new TextDecoder('utf-8', { fatal: false }).decode(buf)
                             if (isTestCandidate(content)) {
-                                const astModule: pyast.Module = pyast.parse(content)
+                                const astModule = await (astService ??= new AstService(
+                                    await whichPythonExe(vscode.workspace.workspaceFolders![0]), extensionUri)).parseFile(content)
                                 processAstModule(item.uri!, astModule, item.parent!)
                             }
                         } catch (e) {
@@ -1009,4 +1016,8 @@ export async function activate(context: vscode.ExtensionContext) {
     ensureWorkspaceItems()
 }
 
-export function deactivate() { }
+export async function deactivate(): Promise<void> {
+    if (astService) {
+        await astService.shutdown().catch(() => { /* ignore */ })
+    }
+}

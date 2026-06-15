@@ -1,10 +1,44 @@
 #!/bin/bash
 set -uo pipefail
 
-# NOP: curent CI env does not support VSC testing
-# npm test
+echo "=== Type checking ==="
+node node_modules/typescript/lib/tsc.js --noEmit
 
-# we can at least lint/etc
-npm run check-types
-npm run lint
+echo "=== Linting ==="
+node node_modules/eslint/bin/eslint.js src
+
+echo "=== Building extension (production) ==="
 node esbuild.js --production
+
+# --- TESTS ---
+echo "=== Compiling tests ==="
+node node_modules/typescript/lib/tsc.js -p tsconfig.test.json --outDir out
+
+if [ "${SKIP_TESTS:-false}" = "true" ]; then
+    echo "=== Tests skipped (SKIP_TESTS=true) ==="
+else
+    # Determine which test harness to use:
+    #   Has DISPLAY / WAYLAND_DISPLAY  -> vscode-test CLI for the full suite
+    #   No display + Xvfb available   -> run integration tests with virtual display
+    #   No display (default CI)        -> unit tests only (no Electron required)
+
+    if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        echo "=== Running full test suite (display detected) ==="
+        node_modules/.bin/vscode-test --files out/test/**/*.test.js \
+            || { echo "Tests failed!"; exit 1; }
+    elif command -v Xvfb >/dev/null 2>&1 && [ "${INTEGRATION:-false}" = "true" ]; then
+        echo "=== Running integration tests (CI with Xvfb) ==="
+        Xvfb :99 -screen 0 1024x768x24 &
+        XVFB_PID=$!
+        export DISPLAY=:99
+        node_modules/.bin/vscode-test --files out/test/**/*.integration.test.js \
+            || { echo "Integration tests failed!"; kill $XVFB_PID; exit 1; }
+        kill $XVFB_PID 2>/dev/null
+    else
+        echo "=== Running unit tests (no display — integration tests skipped) ==="
+        node node_modules/mocha/bin/mocha.js out/test/unit/**/*.test.js \
+            || { echo "Unit tests failed!"; exit 1; }
+    fi
+fi
+
+echo "=== Done ==="

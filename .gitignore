@@ -6,3 +6,6 @@ out/
 *.bak
 .venv/
 requirement*.txt
+# exclude test artifacts
+test/**/*.test.js
+test/**/*.test.js.map

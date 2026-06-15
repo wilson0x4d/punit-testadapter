@@ -752,27 +752,87 @@ export async function activate(context: vscode.ExtensionContext) {
                         const debugSessionOptions: vscode.DebugSessionOptions = {
                             testRun: testRun
                         }
+
+                        // Guard flag to prevent double-cleanup when multiple events fire for the same action.
+                        let debugCleanupDone = false
+
+                        // Port watchdog timer for disconnect detection.
+                        let portWatchdogTimer: ReturnType<typeof setInterval> | undefined
+
+                        const startPortWatchdog = () => {
+                            const net = require('net')
+                            portWatchdogTimer = setInterval(() => {
+                                if (ps.killed || !activeDebugSession) return
+
+                                const socket = new net.Socket()
+                                socket.setTimeout(300)
+                                socket.on('error', () => {
+                                    // Connection refused = port closed = debugpy is gone.
+                                    // But only kill ps if it's still alive — this catches silent disconnects.
+                                    if (!debugCleanupDone && !ps.killed && ps.exitCode === null) {
+                                        output.appendLine('.. debugpy port unreachable, cleaning up.')
+                                        debugCleanupDone = true
+                                        activeDebugSession = undefined
+                                        vscode.commands.executeCommand('workbench.action.debug.stop')
+                                        ps.kill()
+                                    }
+                                    socket.destroy()
+                                })
+                                socket.on('timeout', () => {
+                                    // Port open = still connected to debugpy, nothing to do.
+                                    socket.destroy()
+                                })
+                                socket.connect(debuggerPortNumber!, '127.0.0.1')
+                            }, 2000)
+                        }
+
                         setTimeout(async () => {
                             try {
                                 await vscode.debug.startDebugging(workspaceFolder, debugConfig, debugSessionOptions).then(success => {
                                     if (success) {
-                                        const debuggerDisposables: vscode.Disposable[] = []
-                                        debuggerDisposables.push(
-                                            vscode.debug.onDidTerminateDebugSession(s => {
-                                                if (activeDebugSession && s.id === activeDebugSession.id) {
-                                                    terminateActiveDebugSession()
+                                        // Register our session tracker: fires once when the attach session starts.
+                                        const stopListeners: vscode.Disposable[] = [
+                                            vscode.debug.onDidStartDebugSession((session) => {
+                                                if (session.name.includes("pUnit")) {
+                                                    activeDebugSession = session
+                                                }
+                                            })
+                                        ]
+
+                                        // Primary cleanup handler: fires when debug session is terminated (stop button).
+                                        stopListeners.push(
+                                            vscode.debug.onDidTerminateDebugSession(() => {
+                                                if (debugCleanupDone) return
+                                                debugCleanupDone = true
+                                                terminateActiveDebugSession()
+                                                ps.kill()
+                                            })
+                                        )
+
+                                        // Fallback cleanup handler: fires when all active sessions become null.
+                                        // In attach mode, disconnecting via VS Code's toolbar can clear activeDebugSession
+                                        // without terminating the session, leaving our subprocess running.
+                                        stopListeners.push(
+                                            vscode.debug.onDidChangeActiveDebugSession(() => {
+                                                if (!activeDebugSession && !ps.killed && ps.exitCode === null && !debugCleanupDone) {
+                                                    output.appendLine('.. detected active-debug-session cleared while process alive, cleaning up.')
+                                                    debugCleanupDone = true
+                                                    activeDebugSession = undefined
+                                                    vscode.commands.executeCommand('workbench.action.debug.stop')
                                                     ps.kill()
                                                 }
                                             })
                                         )
-                                        debuggerDisposables.push(
-                                            vscode.debug.onDidStartDebugSession((session) => {
-                                                // Ensure you only track debug sessions spawned by your specific test run
-                                                if (session.name.includes("pUnit")) {
-                                                    activeDebugSession = session
-                                                }
-                                            })         
-                                        )
+
+                                        // Secondary fallback: if VS Code keeps a ghost session around after disconnect,
+                                        // the onDidChangeActiveDebugSession won't fire. Poll the debugpy port to
+                                        // detect when the connection drops — that's our signal to kill the subprocess.
+                                        startPortWatchdog()
+
+                                        // Clean up the watchdog when our process naturally exits (normal test run completion).
+                                        once(ps, 'exit').then(() => {
+                                            if (portWatchdogTimer) clearInterval(portWatchdogTimer)
+                                        })
                                     }
                                 })
                             } catch {

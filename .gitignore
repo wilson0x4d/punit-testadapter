@@ -9,3 +9,4 @@ requirement*.txt
 # exclude test artifacts
 test/**/*.test.js
 test/**/*.test.js.map
+__pycache__

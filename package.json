@@ -39,6 +39,12 @@
                     "default": true,
                     "description": "Restrict test debugger to 'Just My Code'?",
                     "scope": "workspace"
+                },
+                "punit.parallelism": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable parallel test execution via --parallelism flag",
+                    "scope": "workspace"
                 }
             }
         }

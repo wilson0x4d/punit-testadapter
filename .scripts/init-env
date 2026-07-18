@@ -4,10 +4,18 @@ set -uo pipefail
 if [ ! -z "$(which nvm)" ]; then
     nvm use
 fi
-npm install --include=dev
+
+python3 -m venv .venv --prompt 'punit-testadapter'
 
 export PS1='(punit-testadapter) \$ '
 echo -n -e "\033]0;punit-testadapter\007"
+
+source .venv/bin/activate
+pip install 'py-conventional-semver>=1.3.1'
+python -m conventional_semver --changelog
+
+
+npm install --include=dev
 
 export SCRIPTS_PATH="$(realpath '.scripts')"
 if ! [[ ":PATH:" == *":$SCRIPTS_PATH:"* ]]; then
@@ -17,3 +25,4 @@ export NODE_BIN_PATH="$(realpath './node_modules/.bin')"
 if ! [[ ":PATH:" == *":$NODE_BIN_PATH:"* ]]; then
     export PATH="$NODE_BIN_PATH:$PATH"
 fi
+

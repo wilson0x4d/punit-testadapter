@@ -11,3 +11,4 @@ requirement*.txt
 test/**/*.test.js
 test/**/*.test.js.map
 __pycache__
+CHANGELOG.md

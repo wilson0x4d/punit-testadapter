@@ -24,7 +24,7 @@ else
 
     if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
         echo "=== Running full test suite (display detected) ==="
-        node_modules/.bin/vscode-test --files out/test/**/*.test.js \
+        node_modules/.bin/vscode-test \
             || { echo "Tests failed!"; exit 1; }
     elif command -v Xvfb >/dev/null 2>&1 && [ "${INTEGRATION:-false}" = "true" ]; then
         echo "=== Running integration tests (CI with Xvfb) ==="
@@ -32,8 +32,9 @@ else
         XVFB_PID=$!
         export DISPLAY=:99
         node_modules/.bin/vscode-test --files out/test/**/*.integration.test.js \
-            || { echo "Integration tests failed!"; kill $XVFB_PID; exit 1; }
-        kill $XVFB_PID 2>/dev/null
+            || { echo "Integration tests failed!"; kill $XVFB_PID 2>/dev/null; exit 1; }
+        kill $XVFB_PID 2>/dev/null || true
+        unset DISPLAY
     else
         echo "=== Running unit tests (no display — integration tests skipped) ==="
         node node_modules/mocha/bin/mocha.js out/test/unit/**/*.test.js \

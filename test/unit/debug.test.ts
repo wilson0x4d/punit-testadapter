@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: © 2026 Shaun Wilson
 // SPDX-License-Identifier: MIT
+// @trait('integration')
 
 /**
  * Unit tests for debug.ts — debug session management.
  * Uses vscode-test CLI to run in a real vscode host environment.
+ * Tags: integration (requires vscode module)
  */
 
 import { describe, it, suite, teardown } from 'mocha'

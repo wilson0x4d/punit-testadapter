@@ -18,7 +18,7 @@ interface SavedProps {
  * Override vscode.workspace.getConfiguration and workspaceFolders for testing.
  * Returns a restore function to be called after the test.
  */
-export function mockVscodeWorkspace(testPackage: string): [() => void, vscode.WorkspaceFolder] {
+export function mockVscodeWorkspace(vscode: typeof import('vscode'), testPackage: string): [() => void, vscode.WorkspaceFolder] {
     const saved: SavedProps = {
         config: Object.getOwnPropertyDescriptor(vscode.workspace, 'getConfiguration'),
         folders: Object.getOwnPropertyDescriptor(vscode.workspace, 'workspaceFolders'),

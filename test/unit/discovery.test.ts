@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: © 2026 Shaun Wilson
 // SPDX-License-Identifier: MIT
+// @trait('integration')
 
 /**
  * Unit tests for discovery.ts — test discovery subsystem.
@@ -148,7 +149,7 @@ describe('discovery.ts', () => {
 
     describe('ensureWorkspaceItems', () => {
         it('adds root items for each workspace folder', () => {
-            ;[restore] = mockVscodeWorkspace('specs')
+            [restore] = mockVscodeWorkspace(vscode, 'specs')
             const folder = vscode.workspace.workspaceFolders![0]
 
             const controller = makeMockController()
@@ -167,7 +168,7 @@ describe('discovery.ts', () => {
         })
 
         it('uses configured test package name', () => {
-            ;[restore] = mockVscodeWorkspace('my_tests')
+            [restore] = mockVscodeWorkspace(vscode, 'my_tests')
             const folder = vscode.workspace.workspaceFolders![0]
 
             const controller = makeMockController()
@@ -186,11 +187,10 @@ describe('discovery.ts', () => {
     describe('URI path resolution patterns', () => {
         it('splits URI path correctly for nested file', () => {
             // URI path: /workspace/tests/unit/test_helpers.py#SomeClass
-            const uri = vscode.Uri.parse('file:///workspace/tests/unit/test_helpers.py#SomeClass')
             // In the code: uri.toString(true).replace('file:///workspace/tests', '')
             // This would give: '/unit/test_helpers.py#SomeClass'
             // Split by '/' gives: ['', 'unit', 'test_helpers.py#SomeClass']
-            const parts = uri.toString(true).replace('file:///workspace/tests', '').split('/')
+            const parts = vscode.Uri.parse('file:///workspace/tests/unit/test_helpers.py#SomeClass').toString(true).replace('file:///workspace/tests', '').split('/')
             assert.ok(parts.includes('unit'))
         })
 

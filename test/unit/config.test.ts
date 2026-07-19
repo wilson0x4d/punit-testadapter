@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: © 2026 Shaun Wilson
 // SPDX-License-Identifier: MIT
+// @trait('integration')
 
 /**
  * Unit tests for config.ts — workspace configuration accessors.
@@ -20,19 +21,19 @@ describe('config.ts', () => {
 
     describe('getTestPackageName', () => {
         it('returns configured value', () => {
-            [restore] = mockVscodeWorkspace('my_tests')
+            [restore] = mockVscodeWorkspace(vscode, 'my_tests')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getTestPackageName(folder), 'my_tests')
         })
 
         it('returns default "tests" when empty', () => {
-            [restore] = mockVscodeWorkspace('')
+            [restore] = mockVscodeWorkspace(vscode, '')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getTestPackageName(folder), 'tests')
         })
 
         it('trims whitespace', () => {
-            [restore] = mockVscodeWorkspace('   ')
+            [restore] = mockVscodeWorkspace(vscode, '   ')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getTestPackageName(folder), 'tests')
         })
@@ -40,13 +41,13 @@ describe('config.ts', () => {
 
     describe('getWatcherPattern', () => {
         it('wraps test package with glob pattern', () => {
-            [restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getWatcherPattern(folder), '**/tests/**/*.py')
         })
 
         it('handles custom package name', () => {
-            [restore] = mockVscodeWorkspace('spec')
+            [restore] = mockVscodeWorkspace(vscode, 'spec')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getWatcherPattern(folder), '**/spec/**/*.py')
         })
@@ -54,7 +55,7 @@ describe('config.ts', () => {
 
     describe('getJustMyCode', () => {
         it('returns true by default', () => {
-            [restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getJustMyCode(folder), true)
         })
@@ -62,13 +63,13 @@ describe('config.ts', () => {
 
     describe('getParallelism', () => {
         it('returns true by default', () => {
-            [restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             assert.strictEqual(config.getParallelism(folder), true)
         })
 
         it('returns false when configured', () => {
-            [restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             Object.defineProperty(vscode.workspace, 'getConfiguration', {
                 value: () => ({ get: (_: string, _def: boolean) => false }),
                 configurable: true,

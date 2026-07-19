@@ -37,7 +37,16 @@ else
         unset DISPLAY
     else
         echo "=== Running unit tests (no display — integration tests skipped) ==="
-        node node_modules/mocha/bin/mocha.js out/test/unit/**/*.test.js \
+        
+        # Scan compiled test files for // @trait('integration') and build ignore list
+        INTEGRATION_FILES=$(grep -rl "// @trait('integration')" out/test/unit/*.test.js 2>/dev/null || true)
+        
+        MOCHA_ARGS="out/test/unit/**/*.test.js"
+        for f in $INTEGRATION_FILES; do
+            MOCHA_ARGS="$MOCHA_ARGS --ignore $f"
+        done
+        
+        node node_modules/mocha/bin/mocha.js $MOCHA_ARGS \
             || { echo "Unit tests failed!"; exit 1; }
     fi
 fi

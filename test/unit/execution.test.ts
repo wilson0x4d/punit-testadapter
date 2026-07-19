@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: © 2026 Shaun Wilson
 // SPDX-License-Identifier: MIT
+// @trait('integration')
 
 /**
  * Unit tests for execution.ts — test execution helpers.
@@ -8,9 +9,7 @@
 import { describe, it, afterEach } from 'mocha'
 import * as assert from 'assert'
 import * as vscode from 'vscode'
-import {
-    generateToolArgs,
-} from '../../src/execution'
+import { generateToolArgs } from '../../src/execution'
 import { mockVscodeWorkspace } from './vscode-mock'
 
 describe('execution.ts', () => {
@@ -22,21 +21,21 @@ describe('execution.ts', () => {
 
     describe('generateToolArgs', () => {
         it('includes test-package argument', () => {
-            ;[restore] = mockVscodeWorkspace('my_tests')
+            [restore] = mockVscodeWorkspace(vscode, 'my_tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.deepStrictEqual(args.slice(0, 2), ['--test-package', 'my_tests'])
         })
 
         it('default package name is tests', () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.strictEqual(args[1], 'tests')
         })
 
         it('always includes report json', () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.deepStrictEqual(args[2], '--report')
@@ -44,21 +43,21 @@ describe('execution.ts', () => {
         })
 
         it('always includes no-exitcode', () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.strictEqual(args[4], '--no-exitcode')
         })
 
         it('always includes filter @stdin', () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.strictEqual(args[6], '@stdin')
         })
 
         it('produces correct full argument list', () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const folder = vscode.workspace.workspaceFolders![0]
             const args = generateToolArgs(folder)
             assert.deepStrictEqual(args, ['--test-package', 'tests', '--report', 'json', '--no-exitcode', '--filter', '@stdin'])
@@ -67,7 +66,7 @@ describe('execution.ts', () => {
 
     describe('getTestItemFromParsedTestResult', () => {
         it('returns workspace item for unmatched simple result name', async () => {
-            ;[restore] = mockVscodeWorkspace('tests')
+            [restore] = mockVscodeWorkspace(vscode, 'tests')
             const items = new Map<string, vscode.TestItem>()
             const workspaceUri = vscode.workspace.workspaceFolders![0].uri
             const testPackageName = 'tests'

@@ -6,6 +6,7 @@ import { once } from 'events'
 import * as path from 'node:path'
 import * as net from 'net'
 import { randomInt } from 'node:crypto'
+import * as fs from 'node:fs'
 import * as vscode from 'vscode'
 import { AstService } from './ast_service'
 import { extractTestResults, ParsedTestResult as SharedParsedTestResult } from './test-results'
@@ -24,6 +25,7 @@ import {
     processFolder as discoverProcessFolder,
     handleChange as discoveryHandleChange,
     refreshWatchers as discoveryRefreshWatchers,
+    destroyTestItem,
 } from './discovery'
 
 // Use the shared type from test-results.ts instead of duplicating.
@@ -394,6 +396,65 @@ export async function activate(context: vscode.ExtensionContext): Promise<{ cont
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration('punit.--test-package')) {
                 discoveryRefreshWatchers(ctx, context)
+            }
+        }),
+    )
+
+    const checkDirExists = (): boolean => {
+        try {
+            const wf = vscode.workspace.workspaceFolders?.[0]
+            if (!wf) {return false}
+            const testPackageUri = vscode.Uri.joinPath(wf.uri, getTestPackageName(wf))
+            const stat = fs.statSync(testPackageUri.fsPath)
+            return stat.isDirectory()
+        } catch {
+            return false
+        }
+    }
+
+    const triggerFullRefresh = async (): Promise<void> => {
+        controller.items.replace([])
+        for (const [id] of ctx.testItems) {
+            ctx.testItems.delete(id)
+        }
+        ensureWorkspaceItems(ctx)
+        for (const [, rootItem] of controller.items) {
+            await (controller.resolveHandler!(rootItem) as Promise<void>).catch(() => {})
+        }
+    }
+
+    context.subscriptions.push(
+        vscode.workspace.onDidCreateFiles(async event => {
+            if (!checkDirExists()) {
+                await triggerFullRefresh()
+            }
+            for (const fileUri of event.files) {
+                await discoveryHandleChange(ctx, fileUri)
+            }
+        }),
+    )
+    context.subscriptions.push(
+        vscode.workspace.onDidDeleteFiles(async event => {
+            if (!checkDirExists()) {
+                await triggerFullRefresh()
+            }
+            for (const fileUri of event.files) {
+                destroyTestItem(ctx, 'module', fileUri)
+            }
+        }),
+    )
+    context.subscriptions.push(
+        vscode.workspace.onDidRenameFiles(async event => {
+            for (const fileEvent of event.files) {
+                const oldFileName = fileEvent.oldUri.path.split('/').pop() || ''
+                const newFileName = fileEvent.newUri.path.split('/').pop() || ''
+                destroyTestItem(ctx, 'module', fileEvent.oldUri)
+                const testPackageName = getTestPackageName(vscode.workspace.workspaceFolders?.[0]!)
+                if (oldFileName === testPackageName || newFileName === testPackageName) {
+                    await triggerFullRefresh()
+                } else {
+                    await discoveryHandleChange(ctx, fileEvent.newUri)
+                }
             }
         }),
     )

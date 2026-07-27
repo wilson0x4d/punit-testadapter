@@ -8,6 +8,7 @@
 
 import * as path from 'node:path'
 import * as fs from 'node:fs/promises'
+import * as fsSync from 'node:fs'
 import { TextDecoder } from 'util'
 import * as vscode from 'vscode'
 import { AstService } from './ast_service'
@@ -69,7 +70,7 @@ function getTestItem(
     return item
 }
 
-function destroyTestItem(ctx: DiscoveryContext, type: string, uri: vscode.Uri): void {
+export function destroyTestItem(ctx: DiscoveryContext, type: string, uri: vscode.Uri): void {
     const key = `${type}:${uri}`
     const existing = ctx.testItems.get(key)
     if (existing) {
@@ -235,8 +236,14 @@ export function ensureWorkspaceItems(ctx: DiscoveryContext): void {
     vscode.workspace.workspaceFolders?.forEach(workspaceFolder => {
         const testPackageName = getTestPackageName(workspaceFolder)
         const testPackageUri = vscode.Uri.joinPath(workspaceFolder.uri, testPackageName)
-        const workspaceItem = getTestItem(ctx, 'root', testPackageUri, workspaceFolder.name)
-        ctx.controller.items.add(workspaceItem)
+        try {
+            const stat = fsSync.statSync(testPackageUri.fsPath)
+            if (!stat.isDirectory()) {return}
+            const workspaceItem = getTestItem(ctx, 'root', testPackageUri, workspaceFolder.name)
+            ctx.controller.items.add(workspaceItem)
+        } catch {
+            // Test package directory doesn't exist — skip creating root item
+        }
     })
 }
 

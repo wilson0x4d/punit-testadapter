@@ -8,7 +8,7 @@
     "repository": "https://github.com/wilson0x4d/punit-testadapter",
     "type": "commonjs",
     "engines": {
-        "vscode": "^1.109.0"
+        "vscode": "^1.126.0"
     },
     "categories": [
         "Other"

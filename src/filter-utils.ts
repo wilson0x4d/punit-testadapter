@@ -16,7 +16,7 @@ export function joinPathSegments(relPath: string, separator: string): string {
     if (relPath.length === 0) {
         return ''
     }
-    return relPath.split(path.sep).join(separator)
+    return relPath.split(/[/\\]/).join(separator)
 }
 
 /**

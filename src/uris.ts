@@ -51,7 +51,7 @@ export function createModuleFilter(
     const basedir = path.join(workspaceFolder.uri.fsPath, getTestPackageName(workspaceFolder))
     let reldir = path.relative(basedir, moduleUri.fsPath).replace(base, '')
     if (reldir.length > 0) {
-        reldir = `${reldir.replace(/^\/+|\/+$/g, '')}/`
+        reldir = `${reldir.replace(/^[/\\]+|[/\\]+$/g, '')}/`
     }
     return buildFilter(
         prefix,
@@ -70,7 +70,7 @@ export function createClassFilter(
     const basedir = path.join(workspaceFolder.uri.fsPath, getTestPackageName(workspaceFolder))
     let reldir = path.relative(basedir, classUri.fsPath).replace(base, '')
     if (reldir.length > 0) {
-        reldir = `${reldir.replace(/^\/+|\/+$/g, '')}/`
+        reldir = `${reldir.replace(/^[/\\]+|[/\\]+$/g, '')}/`
     }
     return buildFilter(
         prefix,
@@ -89,7 +89,7 @@ export function createModuleFunctionFilter(
     const basedir = path.join(workspaceFolder.uri.fsPath, getTestPackageName(workspaceFolder))
     let reldir = path.relative(basedir, moduleUri.fsPath).replace(base, '')
     if (reldir.length > 0) {
-        reldir = `${reldir.replace(/^\/+|\/+$/g, '')}/`
+        reldir = `${reldir.replace(/^[/\\]+|[/\\]+$/g, '')}/`
     }
     return buildFilter(
         prefix,
@@ -110,7 +110,7 @@ export function createClassMethodFilter(
     const basedir = path.join(workspaceFolder.uri.fsPath, getTestPackageName(workspaceFolder))
     let reldir = path.relative(basedir, moduleUri.fsPath).replace(base, '')
     if (reldir.length > 0) {
-        reldir = `${reldir.replace(/^\/+|\/+$/g, '')}/`
+        reldir = `${reldir.replace(/^[/\\]+|[/\\]+$/g, '')}/`
     }
     return buildFilter(
         prefix,

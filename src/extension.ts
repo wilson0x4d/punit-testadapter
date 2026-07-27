@@ -192,7 +192,7 @@ async function performTestRun(
                         cwd: workspaceFolder.uri.fsPath,
                         env: pythonEnv,
                         shell: false,
-                        stdio: ['pipe', 'overlapped', 'overlapped'],
+                        stdio: 'pipe',
                     },
                 )
 

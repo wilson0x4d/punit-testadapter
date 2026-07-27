@@ -164,7 +164,7 @@ export class AstService {
         }
 
         this.__child = spawn(this.__pythonExe, [resolved], {
-            stdio: ['pipe', 'overlapped', 'overlapped'],
+            stdio: 'pipe',
         })
 
         if (!this.__child?.stdin) {
